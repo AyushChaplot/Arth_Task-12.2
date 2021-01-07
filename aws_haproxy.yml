@@ -1,0 +1,67 @@
+- hosts: backend_ws
+  tasks:  
+     - name: "Checking httpd installed or not" 
+       command: "rpm -q httpd"
+       register: web
+       ignore_errors: yes 
+
+     - name: "Installing Httpd"
+       package:
+           name: "httpd" 
+           state: present
+       when: web.rc !=0 
+     
+     - name: "Checking php installed or not"
+       command: "rpm -q php"       
+       register: php
+       ignore_errors: yes
+
+     - name: "Installing php.."
+       package: 
+           name: php
+           state: present
+       when: php.rc !=0      
+
+     - name: "copying php code"
+       copy: 
+         src: index.php
+         dest: /var/www/html/index.php  
+         
+     - name: "Starting Httpd services.."
+       service: 
+         name: "httpd"
+         state: started
+         enabled: yes           
+
+
+- hosts: 127.0.0.1
+  tasks:
+     - name: "Checking Haproxy installed or not"
+       command: "rpm -q haproxy"
+       register: proxy
+       ignore_errors: yes
+
+     - name: "Installing Haproxy.."
+       package: 
+          name: "haproxy"
+          state: present
+       when: proxy.rc !=0
+
+     - name: "stopping firewall"
+       command: "systemctl stop firewalld"
+
+     - name: selinux
+       selinux:
+           policy: targeted     
+           state: permissive     
+
+     - name: updating the haproxy cfg file..
+       template:
+          src: haproxy.cfg
+          dest: /etc/haproxy/haproxy.cfg
+          
+     - name: starting the haproxy services
+       service:
+            name: haproxy
+            state: restarted
+
